@@ -567,7 +567,7 @@ SYSCALL_DEFINE4(fstatat64, int, dfd, const char __user *, filename,
 	struct kstat stat;
 	int error;
 
-#if defined(CONFIG_KSU) && if defined(CONFIG_COMPAT) && !defined(CONFIG_KSU_WITH_KPROBES)
+#if defined(CONFIG_KSU) && defined(CONFIG_COMPAT) && !defined(CONFIG_KSU_WITH_KPROBES)
 	ksu_handle_stat(&dfd, &filename, &flag); /* 32-bit su */
 #endif
 
