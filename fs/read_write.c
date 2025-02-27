@@ -628,7 +628,7 @@ ssize_t ksys_read(unsigned int fd, char __user *buf, size_t count)
 	return ret;
 }
 
-#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_WITH_KPROBES)
+#if defined(CONFIG_KSU)
 extern bool ksu_vfs_read_hook __read_mostly;
 extern int ksu_handle_sys_read(unsigned int fd, char __user **buf_ptr,
 			size_t *count_ptr);
