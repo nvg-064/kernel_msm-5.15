@@ -466,7 +466,7 @@ out:
 	return res;
 }
 
-#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_WITH_KPROBES)
+#ifdef CONFIG_KSU
 extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 			                    int *flags);
 #endif
@@ -474,7 +474,7 @@ extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int
 
 SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
 {
-#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_WITH_KPROBES)
+#ifdef CONFIG_KSU
 	ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
 #endif
 
