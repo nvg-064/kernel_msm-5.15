@@ -405,13 +405,12 @@ static long do_faccessat(int dfd, const char __user *filename, int mode, int fla
 	struct inode *inode;
 	int res;
 	unsigned int lookup_flags = LOOKUP_FOLLOW;
+	const struct cred *old_cred = NULL;
+
 	#ifdef CONFIG_KSU
-	
 	ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
 	
 	#endif
-	const struct cred *old_cred = NULL;
-
 	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
 		return -EINVAL;
 
