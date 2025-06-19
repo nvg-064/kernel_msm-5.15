@@ -51,7 +51,7 @@
 
 /* CSI2 HW configuration */
 #define OV9282_LINK_FREQ	400000000
-#define OV9282_NUM_DATA_LANES	2
+#define OV9282_MAX_NUM_DATA_LANES	2
 
 #define OV9282_REG_MIN		0x00
 #define OV9282_REG_MAX		0xfffff
@@ -126,6 +126,7 @@ struct ov9282_mode {
  * @exp_ctrl: Pointer to exposure control
  * @again_ctrl: Pointer to analog gain control
  * @vblank: Vertical blanking in lines
+ * @num_data_lanes: Number of configured data lanes
  * @cur_mode: Pointer to current selected sensor mode
  * @mutex: Mutex for serializing sensor controls
  * @streaming: Flag indicating streaming state
@@ -148,6 +149,7 @@ struct ov9282 {
 		struct v4l2_ctrl *again_ctrl;
 	};
 	u32 vblank;
+	u32 num_data_lanes;
 	const struct ov9282_mode *cur_mode;
 	struct mutex mutex;
 	bool streaming;
@@ -258,6 +260,12 @@ static const struct ov9282_reg mode_1280x720_regs[] = {
 	{0x0101, 0x01},
 	{0x1000, 0x03},
 	{0x5a08, 0x84},
+};
+
+/* Data lane configuration registers */
+static const struct ov9282_reg single_lane_regs[] = {
+	{0x3039, 0x12},
+	{0x3662, 0x01},
 };
 
 /* Supported sensor mode configurations */
@@ -677,6 +685,14 @@ static int ov9282_start_streaming(struct ov9282 *ov9282)
 		return ret;
 	}
 
+	if (ov9282->num_data_lanes < OV9282_MAX_NUM_DATA_LANES) {
+		ret = ov9282_write_regs(ov9282, single_lane_regs, ARRAY_SIZE(single_lane_regs));
+		if (ret) {
+			dev_err(ov9282->dev, "fail to write data lane configuration\n");
+			return ret;
+		}
+	}
+
 	/* Setup handler will write actual exposure and gain */
 	ret =  __v4l2_ctrl_handler_setup(ov9282->sd.ctrl_handler);
 	if (ret) {
@@ -846,13 +862,14 @@ static int ov9282_parse_hw_config(struct ov9282 *ov9282)
 	if (ret)
 		return ret;
 
-	if (bus_cfg.bus.mipi_csi2.num_data_lanes != OV9282_NUM_DATA_LANES) {
+	if (bus_cfg.bus.mipi_csi2.num_data_lanes > OV9282_MAX_NUM_DATA_LANES) {
 		dev_err(ov9282->dev,
 			"number of CSI2 data lanes %d is not supported",
 			bus_cfg.bus.mipi_csi2.num_data_lanes);
 		ret = -EINVAL;
 		goto done_endpoint_free;
 	}
+	ov9282->num_data_lanes = bus_cfg.bus.mipi_csi2.num_data_lanes;
 
 	if (!bus_cfg.nr_of_link_frequencies) {
 		dev_err(ov9282->dev, "no link frequencies defined");
@@ -1055,6 +1072,7 @@ static int ov9282_probe(struct i2c_client *client)
 	/* Initialize subdev */
 	v4l2_i2c_subdev_init(&ov9282->sd, client, &ov9282_subdev_ops);
 
+	ov9282->num_data_lanes = OV9282_MAX_NUM_DATA_LANES;
 	ret = ov9282_parse_hw_config(ov9282);
 	if (ret) {
 		dev_err(ov9282->dev, "HW configuration is not supported");
