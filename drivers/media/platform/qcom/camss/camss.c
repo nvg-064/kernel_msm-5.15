@@ -4154,7 +4154,6 @@ static int camss_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct camss *camss;
-	int num_subdevs;
 	int ret;
 
 	camss = devm_kzalloc(dev, sizeof(*camss), GFP_KERNEL);
@@ -4225,11 +4224,9 @@ static int camss_probe(struct platform_device *pdev)
 
 	pm_runtime_enable(dev);
 
-	num_subdevs = camss_of_parse_ports(camss);
-	if (num_subdevs < 0) {
-		ret = num_subdevs;
+	ret = camss_of_parse_ports(camss);
+	if (ret < 0)
 		goto err_v4l2_device_unregister;
-	}
 
 	ret = camss_register_entities(camss);
 	if (ret < 0)
@@ -4245,24 +4242,13 @@ static int camss_probe(struct platform_device *pdev)
 		goto err_register_subdevs;
 	}
 
-	if (num_subdevs) {
-		camss->notifier.ops = &camss_subdev_notifier_ops;
-
-		ret = v4l2_async_notifier_register(&camss->v4l2_dev,
-						   &camss->notifier);
-		if (ret) {
-			dev_err(dev,
-				"Failed to register async subdev nodes: %d\n",
-				ret);
-			goto err_media_device_unregister;
-		}
-	} else {
-		ret = v4l2_device_register_subdev_nodes(&camss->v4l2_dev);
-		if (ret < 0) {
-			dev_err(dev, "Failed to register subdev nodes: %d\n",
-				ret);
-			goto err_media_device_unregister;
-		}
+	camss->notifier.ops = &camss_subdev_notifier_ops;
+	ret = v4l2_async_notifier_register(&camss->v4l2_dev,
+					   &camss->notifier);
+	if (ret) {
+		dev_err(dev,
+			"Failed to register async subdev nodes: %d\n", ret);
+		goto err_media_device_unregister;
 	}
 
 	return 0;
